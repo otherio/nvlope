@@ -19,12 +19,15 @@ class Nvlope::Message < Nvlope::Model
     subject
   }
 
+  alias_method :html_part, :html
+  alias_method :text_part, :text
+
   def created_at
     @created_at ||= Time.at(created)
   end
 
   def header
-    @header ||= Nvlope::Message::Header.new(nvlope, raw['header'])
+    @header ||= Nvlope::Message::Header.new(nvlope, raw['header'] || {})
   end
 
   def sender
@@ -48,6 +51,10 @@ class Nvlope::Message < Nvlope::Model
     define_method(key){ header.send(key) }
   end
 
+  def delete
+    nvlope.messages.delete [id]
+  end
+
   def mail_message
     mail_message = Mail::Message.new
     mail_message.date         = header.date
@@ -68,6 +75,10 @@ class Nvlope::Message < Nvlope::Model
     end unless html.nil?
     # files.each add attachment
     mail_message
+  end
+
+  def == other
+    (self.class === other || other.class === self) && self.id == other.id
   end
 
 end

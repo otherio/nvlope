@@ -5,21 +5,22 @@ class Nvlope::Messages
   end
   attr_reader :nvlope
 
-  def query params={}, headers={}
-    params[:include] ||= 'all'
-    raw = nvlope.request(:get, '/messages', params, headers)
+  def query query={}
+    query[:include] ||= 'all'
+    raw = nvlope.authenticated_request(:get, '/messages', query: query)
     Nvlope::MessageCollection.new(nvlope, raw)
   end
 
-  def bulk_get message_ids, params={}, headers={}
-    params["message_ids"] = message_ids
-    raw = nvlope.request(:post, '/messages', params, headers)
+  def bulk_get message_ids, query={}
+    query["message_ids"] = message_ids
+    raw = nvlope.authenticated_request(:post, '/messages', query: query)
     Nvlope::MessageCollection.new(nvlope, raw)
   end
 
-  def delete message_ids, params={}, headers={}
-    params["message_ids"] = message_ids
-    nvlope.request(:delete, '/messages', params, headers)
+  def delete message_ids, query={}
+    query["message_ids"] = message_ids
+    headers = {'Content-Type' => 'application/json'}
+    nvlope.authenticated_request(:delete, '/messages', body: query.to_json, headers: headers)
     self
   end
 

@@ -1,11 +1,13 @@
 require 'uri'
 require 'httparty'
 require 'nvlope/version'
+require 'logger'
 
 class Nvlope
 
   autoload :Arguments,         'nvlope/arguments'
   autoload :Model,             'nvlope/model'
+  autoload :Request,           'nvlope/request'
   autoload :Session,           'nvlope/session'
   autoload :AccessToken,       'nvlope/access_token'
   autoload :Account,           'nvlope/account'
@@ -15,8 +17,15 @@ class Nvlope
   autoload :Message,           'nvlope/message'
   autoload :EmailAddress,      'nvlope/email_address'
 
-  def self.Arguments hash
-    Nvlope::Arguments.new hash
+  class << self
+    def Arguments hash
+      Nvlope::Arguments.new hash
+    end
+
+    def logger
+      @logger ||= Logger.new('/dev/null')
+    end
+    attr_writer :logger
   end
 
   def initialize arguments
@@ -29,12 +38,18 @@ class Nvlope
     @grant_type     = arguments.optional(:grant_type ){ 'password'                }.to_s
     @domain         = arguments.optional(:domain     ){ 'https://api.nvlope.com/' }.to_s
     @api_version    = arguments.optional(:api_version){ 'v1'                      }.to_s
+    @logger         = arguments.optional(:logger)
   end
 
   attr_accessor :grant_type, :username, :password, :client_id, :client_secret, :domain, :api_version
 
-  def url path
-    File.join(domain, api_version, path)
+  def logger
+    @logger || self.class.logger
+  end
+  attr_writer :logger
+
+  def access_token?
+    !@access_token.nil?
   end
 
   def access_token
@@ -49,25 +64,27 @@ class Nvlope
     @messages ||= Messages.new(self)
   end
 
-  def request method, path, query={}, headers={}
-    headers['Authorization'] ||= "Bearer #{access_token}"
-    url = url(path)
-    # puts "Nvlope: #{method.upcase} #{url}"
-    HTTParty.send(method, url, query: query, headers: headers)
+  def unauthenticated_request method, path, options={}
+    Request.new(self, method, path, options).perform!
   end
 
+  def authenticated_request method, path, options={}
+    options[:headers] ||= {}
+    options[:headers]['Authorization'] ||= "Bearer #{access_token}"
+    Request.new(self, method, path, options).perform!
+  end
 
   def get_access_token
     @access_token = begin
-      url = url('oauth2/token')
-      # puts "Nvlope: POST #{url}"
-      response = HTTParty.post(url, query:{
-        grant_type:    grant_type,
-        username:      username,
-        password:      password,
-        client_id:     client_id,
-        client_secret: client_secret,
-      })
+      response = unauthenticated_request(:post, 'oauth2/token',
+        query: {
+          grant_type:    grant_type,
+          username:      username,
+          password:      password,
+          client_id:     client_id,
+          client_secret: client_secret,
+        }
+      )
       response['access_token']
     end
   end

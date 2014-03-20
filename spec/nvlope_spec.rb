@@ -97,7 +97,7 @@ describe Nvlope do
         query: query,
         headers: headers.merge('Authorization' => 'Bearer FAKE_ACCESS_TOKEN'),
       )
-      nvlope.request(:get, 'some/path', query, headers)
+      nvlope.request(:get, 'some/path', query: query, headers: headers)
     end
   end
 

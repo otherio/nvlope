@@ -6,12 +6,12 @@ class Nvlope::Model
 
   def self.keys *keys
     @keys ||= Set[]
-    return @keys if keys.empty?
     keys = keys.flatten.map(&:to_s).to_set
     keys.each do |key|
       define_method(key_to_method_name(key)){ raw[key] }
     end
     @keys += keys
+    @keys + (superclass.respond_to?(:keys) ? superclass.keys : Set[])
   end
 
   def initialize nvlope, raw={}
